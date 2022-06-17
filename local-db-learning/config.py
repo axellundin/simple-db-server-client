@@ -1,21 +1,26 @@
+#!/usr/bin/python
 from configparser import ConfigParser
-import os
-from xml.dom import NotFoundErr 
 
-def get_config(filename='database.ini', section='postgresql'):
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    
-    parser = ConfigParser()
-    # read config file
-    parser.read(cwd + "/" + filename)
+class ConfigFileError(Exception):
+    pass
 
-    db = dict()
-    if parser.has_section(section):
+def config(filename='database.ini', section='postgresql'):
+    ''' 
+    Read db conf from file.
+    Raises exception ConfigFileError 
+    '''
+    try:  
+        # create a parser
+        parser = ConfigParser()
+        # read config file
+        parser.read(filename)
+        
+        # get section, default to postgresql
+        db = {}
         params = parser.items(section)
-        for param in params: 
+        for param in params:
             db[param[0]] = param[1]
-    else:
-        raise NotFoundErr(f'Section {section} not found in the file {filename}')
-    return db
+    except:
+        raise ConfigFileError('Missing data in config file')
 
-if __name__=='__main__':print(get_config())
+    return db

@@ -1,57 +1,49 @@
-from os import times
+from config import config
 import psycopg2
-from config import get_config
-from datetime import datetime
-import time
+#import datetime
 
-def get_db_connection():
-    """ Returns a psycopg connection to the database server.
-    TODO: Error handling, documentation """
-    conf = get_config()
-    conn = psycopg2.connect(**conf)
-    return conn 
+class TableError(Exception):
+    pass
 
-def exec_command(command): 
-    conn = get_db_connection()
+def connect():
+    """ Connect to the PostgreSQL database server """
+    conn = None
+    params = config()
+    conn = psycopg2.connect(**params)
     cur = conn.cursor()
-    cur.execute(command)
-    conn.commit()
+    return conn, cur
+    
+def close_commit(conn, cur):
+    """ Close cursor, commit the changes and close the connection """
     cur.close()
+    conn.commit()
+    conn.close()
+
+def execute_query(query):
+    """ Execute a query to the database """
+    conn, cur = connect()
+    cur.execute(query)
+    close_commit(conn, cur)
+
+def delete_data(table_name, t):
+    """ Delete data from the table """
+    delete_query = f"DELETE FROM {table_name} WHERE timestamp = '{t}' "
+    execute_query(delete_query)
+
+def add_data(table_name, t, v, i):
+    """ Add data to table """
+    add_query = f"INSERT INTO {table_name} (timestamp, voltage, current) VALUES ('{t}', {v}, {i})"
+    execute_query(add_query)
 
 def create_table(table_name):
-    command = f"CREATE TABLE {table_name}(voltage FLOAT(5), current FLOAT(5), timestamp TIMESTAMP PRIMARY KEY)"
-    exec_command(command)
-
-def get_table(table_name):
-    command = f"SELECT * FROM {table_name}"
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(command)
-    table_data = cur.fetchall()
-    cur.close()
-    return table_data
-
-def add_measurement(table_name, voltage, current, timestamp):
-    """  """
-    command = f"INSERT INTO {table_name} (voltage, current, timestamp) VALUES({voltage}, {current}, '{timestamp}')"
-    exec_command(command)
-
-def remove_measurement(table_name, timestamp):
-    """  """
-    command = f"DELETE FROM {table_name} WHERE timestamp = '{timestamp}'"
-    exec_command(command)
-
-if __name__=='__main__': 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT timestamp FROM battery_data')
-    timestamps = cur.fetchall()
-
-    print(timestamps)
-    for time in timestamps:
-        remove_measurement('battery_data', str(time[0]))
-
-    print(get_table('battery_data'))
-    
+    """ Create an empty table with columns voltage and current """
+    try:
+        create_table_query = f"CREATE TABLE {table_name} (timestamp TIMESTAMP, voltage NUMERIC, current NUMERIC)"
+        execute_query(create_table_query)
+    except: 
+        raise TableError('Could not create table')
 
 
+#t = datetime.datetime.now()
+#add_data(t, 'batterydata', 500, 600)
+#
